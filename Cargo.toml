@@ -1,0 +1,10 @@
+[package]
+name = "kono-runtime-native"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate_type = ["dylib"]
+
+[dependencies]
+wry = "0.29.0"
