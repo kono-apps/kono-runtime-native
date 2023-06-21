@@ -8,3 +8,4 @@ crate_type = ["dylib"]
 
 [dependencies]
 wry = "0.29.0"
+mime_guess = "2.0.4"

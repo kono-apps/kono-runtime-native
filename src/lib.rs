@@ -1,10 +1,13 @@
 #![allow(non_snake_case)] // <-- Kotlin :)
 
-use std::mem;
 use std::ffi::{CStr, CString};
+use std::mem;
 use std::os::raw::c_char;
 
-mod window;
+pub mod webview_builder;
+pub mod asset;
+pub mod event;
+pub mod window_builder;
 
 /// Converts a Rust string to a Java string
 pub fn to_java_string(string: &str) -> *const c_char {
@@ -20,4 +23,9 @@ pub fn to_java_string(string: &str) -> *const c_char {
 pub fn to_rust_string(pointer: *const c_char) -> String {
     let slice = unsafe { CStr::from_ptr(pointer).to_bytes() };
     std::str::from_utf8(slice).unwrap().to_string()
+}
+
+/// Converts a Java string pointer into a Rust byte array
+pub fn to_rust_bytes<'a>(pointer: *const c_char) -> &'a [u8] {
+    unsafe { CStr::from_ptr(pointer).to_bytes() }
 }
