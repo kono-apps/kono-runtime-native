@@ -11,7 +11,7 @@ use wry::http::Response;
 use wry::webview::{WebContext, WebView, WebViewBuilder};
 use crate::asset::Asset;
 
-use crate::{to_rust_bytes, to_rust_string};
+use crate::to_rust_string;
 
 /// Creates a new WebViewBuilder.
 ///
@@ -27,7 +27,6 @@ extern fn createWebViewBuilder(window: Box<Window>) -> Box<WebViewBuilder<'stati
 #[no_mangle]
 extern fn webViewSetURL(webview_builder: Box<WebViewBuilder>, url: *const c_char) -> Box<WebViewBuilder> {
     let url = to_rust_string(url);
-
     webview_builder.with_url(&url)
         .expect(&*format!("failed to set URL to '{}'", url))
         .into()
