@@ -1,5 +1,10 @@
+on:
+  push:
+    tags:
+      - '*'
+
 jobs:
-  build_and_test:
+  build_release:
     name: Rust project
     runs-on: ubuntu-latest
     steps:
