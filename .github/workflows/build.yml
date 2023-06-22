@@ -17,9 +17,12 @@ jobs:
           key: cargo-registry
 
   build_release:
-    name: Build
-    uses: actions-rs/cargo@v1
-    with:
-      command: build
-      args: --release --target=${{ matrix.target }}
-      use-cross: ${{ matrix.cross }}
+    name: Build Rust project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target=${{ matrix.target }}
+          use-cross: ${{ matrix.cross }}
