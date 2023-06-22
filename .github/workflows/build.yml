@@ -77,3 +77,11 @@ jobs:
 
       - name: build runtime
         run: cargo build --target ${{ matrix.platform.target }} --release
+      - name: upload artifacts
+        uses: actions/upload-artifacts@v3
+        with:
+          name: ${{ matrix.platform.target }}
+          path: |
+            target/releases/*.so
+            target/releases/*.dll
+            target/releases/*.dylib
