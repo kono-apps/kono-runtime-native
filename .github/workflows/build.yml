@@ -82,6 +82,6 @@ jobs:
         with:
           name: ${{ matrix.platform.target }}
           path: |
-            *.so
-            *.dll
-            *.dylib
+            /Users/runner/work/kono-runtime-native/kono-runtime-native/target/release/*.so
+            /Users/runner/work/kono-runtime-native/kono-runtime-native/target/release/*.dll
+            /Users/runner/work/kono-runtime-native/kono-runtime-native/target/release/*.dylib
