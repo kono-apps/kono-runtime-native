@@ -12,5 +12,5 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-        use-cross: true
+          use-cross: true
       - run: cargo build --release --all-features
