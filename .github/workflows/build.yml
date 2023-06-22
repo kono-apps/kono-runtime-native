@@ -4,13 +4,22 @@ on:
       - master
 
 jobs:
-  build_release:
-    name: Build Rust project
+  cache:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Cargo cache
+        uses: actions/cache@v2
         with:
-          toolchain: stable
-          use-cross: true
-      - run: cargo build --release --all-features
+          path: |
+            ~/.cargo/registry
+            ./target
+          key: cargo-registry
+
+  build_release:
+    name: Build
+    uses: actions-rs/cargo@v1
+    with:
+      command: build
+      args: --release --target=${{ matrix.target }}
+      use-cross: ${{ matrix.cross }}
