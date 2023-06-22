@@ -82,6 +82,6 @@ jobs:
         with:
           name: ${{ matrix.platform.target }}
           path: |
-            ~/target/release/*.so
-            ~/target/release/*.dll
-            ~/target/release/*.dylib
+            *.so
+            *.dll
+            *.dylib
