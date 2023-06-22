@@ -1,28 +1,80 @@
+name: Rust Build and Release
+
 on:
   push:
     branches:
-      - master
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  cache:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Cargo cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ./target
-          key: cargo-registry
+  build_and_release:
+    runs-on: ${{ matrix.os }}
 
-  build_release:
-    name: Build Rust project
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+
+        include:
+          - os: macos-latest
+            env:
+              TARGET: aarch64-apple-ios
+              PLATFORM_NAME: aarch64-ios
+
+          - os: ubuntu-latest
+            env:
+              TARGET: aarch64-linux-android
+              PLATFORM_NAME: aarch64-android
+
     steps:
-      - name: Build
-        uses: actions-rs/cargo@v1
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
         with:
-          command: build
-          args: --release --target=${{ matrix.target }}
-          use-cross: ${{ matrix.cross }}
+          rust-version: stable
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Build with Cargo
+        run: cargo build --release --target ${{ env.TARGET }}
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ runner.os }}-release
+          path: target/release
+
+  release:
+    needs: build_and_release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.os }}-release
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          draft: false
+          prerelease: false
+
+      - name: Upload assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/${{ matrix.os }}-release/*
+          asset_name: ${{ env.PLATFORM_NAME }}
+          asset_content_type: application/octet-stream
