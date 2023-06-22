@@ -1,140 +1,79 @@
-name: Publish to Github
-
 on:
   push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+    branches:
+      - main
 
 jobs:
-  create-release:
-    name: Create Github Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create artifacts directory
-        run: mkdir artifacts
-      - name: Get the release version from the tag
-        run: |
-          # Apparently, this is the right way to get a tag name. Really?
-          #
-          # See: https://github.community/t5/GitHub-Actions/How-to-get-just-the-tag-name/m-p/32167/highlight/true#M1027
-          echo "SK_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-      - name: Create Release
-        id: release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ env.SK_VERSION }}
-          body: ${{ env.SK_VERSION }}
-          draft: false
-          prerelease: false
-      - name: Save release upload URL to artifact
-        run: echo "${{ steps.release.outputs.upload_url }}" > artifacts/release-upload-url
-      - name: Save version number to artifact
-        run: echo "${{ env.SK_VERSION }}" > artifacts/release-version
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v1
-        with:
-          name: artifacts
-          path: artifacts
-
-  publish-to-github:
-    name: Publish to Github
-    needs: ['create-release']
-    runs-on: ${{matrix.os}}
+  test:
     strategy:
+      fail-fast: false
       matrix:
-        build: [linux, arm, arm-v7, macos]
-        include:
-          - build: linux
-            os: ubuntu-latest
-            rust: stable
-            target: x86_64-unknown-linux-musl
-            cross: false
-          - build: arm
-            os: ubuntu-latest
-            rust: stable
-            target: arm-unknown-linux-gnueabihf
-            cross: true
-          - build: arm-v7
-            os: ubuntu-latest
-            rust: stable
-            target: armv7-unknown-linux-gnueabihf
-            cross: true
-          - build: macos
-            os: macos-latest
-            rust: stable
-            target: x86_64-apple-darwin
-            cross: false
+        rust_version: [stable]
+        platform:
+          - { target: x86_64-pc-windows-msvc, os: windows-latest }
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest }
+          - { target: x86_64-apple-darwin, os: macos-latest }
+          - { target: aarch64-apple-ios, os: macos-latest }
+          - { target: aarch64-linux-android, os: ubuntu-latest }
+
+    runs-on: ${{ matrix.platform.os }}
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Install correct toolchain
+      - uses: actions/checkout@v2
+      - name: install stable
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.rust }}
-          target: ${{ matrix.target }}
-          use-cross: ${{ matrix.cross }}
-          override: true
+          toolchain: stable
+          target: ${{ matrix.platform.target }}
 
-      - name: Get release download URL
-        uses: actions/download-artifact@v1
-        with:
-          name: artifacts
-          path: artifacts
-      - name: Set release upload URL and release version
-        shell: bash
+      - name: install webkit2gtk (ubuntu only)
+        if: contains(matrix.platform.target, 'gnu')
         run: |
-          release_upload_url="$(cat artifacts/release-upload-url)"
-          echo "RELEASE_UPLOAD_URL=$release_upload_url" >> $GITHUB_ENV
-          echo "release upload url: $RELEASE_UPLOAD_URL"
-          release_version="$(cat artifacts/release-version)"
-          echo "RELEASE_VERSION=$release_version" >> $GITHUB_ENV
-          echo "release version: $RELEASE_VERSION"
+          sudo apt-get update
+          sudo apt-get install -y webkit2gtk-4.1 libgtksourceview-3.0-dev libayatana-appindicator3-dev
 
-      - name: build
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: ${{ matrix.cross }}
-          command: build
-          args: --release --target ${{ matrix.target }}
-      - name: Package Artifacts
+      - name: install webview2 (windows only)
+        if: contains(matrix.platform.target, 'windows')
+        shell: pwsh
         run: |
-          src=$(pwd)
-          stage=
-          
-          case $RUNNER_OS in
-              Linux)
-                  stage=$(mktemp -d)
-                  ;;
-              macOS)
-                  stage=$(mktemp -d -t tmp)
-                  ;;
-          esac
-          
-          echo "src is: $src"
-          echo "stage is: $stage"
-          
-          cp target/${{ matrix.target }}/release/sk $stage/
-          cd $stage
-          
-          ASSET_NAME="skim-${{ env.RELEASE_VERSION }}-${{ matrix.target }}.tar.gz"
-          ASSET_PATH="$src/$ASSET_NAME"
-          echo "ASSET_NAME=$ASSET_NAME" >> $GITHUB_ENV
-          echo "ASSET_PATH=$ASSET_PATH" >> $GITHUB_ENV
-          
-          tar czf $ASSET_PATH *
-          
-          cd $src
-      - name: Upload release archive
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          Invoke-WebRequest https://go.microsoft.com/fwlink/p/?LinkId=2124703 -OutFile installwebview.exe -UseBasicParsing
+          cmd /C start /wait installwebview.exe /silent /install
+
+      - name: Get current date
+        run: echo "CURRENT_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Cache cargo registry
+        uses: actions/cache@v2.1.4
         with:
-          upload_url: ${{ env.RELEASE_UPLOAD_URL }}
-          asset_path: ${{ env.ASSET_PATH }}
-          asset_name: ${{ env.ASSET_NAME }}
-          asset_content_type: application/octet-stream
+          path: ~/.cargo/registry
+          # Add date to the cache to keep it up to date
+          key: ${{ matrix.platform }}-stable-cargo-registry-${{ hashFiles('Cargo.toml') }}-${{ env.CURRENT_DATE }}
+          # Restore from outdated cache for speed
+          restore-keys: |
+            ${{ matrix.platform }}-stable-cargo-registry-${{ hashFiles('Cargo.toml') }}
+            ${{ matrix.platform }}-stable-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v2.1.4
+        with:
+          path: ~/.cargo/git
+          # Add date to the cache to keep it up to date
+          key: ${{ matrix.platform }}-stable-cargo-index-${{ hashFiles('Cargo.toml') }}-${{ env.CURRENT_DATE }}
+          # Restore from outdated cache for speed
+          restore-keys: |
+            ${{ matrix.platform }}-stable-cargo-index-${{ hashFiles('Cargo.toml') }}
+            ${{ matrix.platform }}-stable-cargo-index-
+
+      - name: Cache cargo target
+        uses: actions/cache@v2
+        with:
+          path: target
+          # Add date to the cache to keep it up to date
+          key: ${{ matrix.platform }}-stable-cargo-core-${{ hashFiles('Cargo.toml') }}-${{ env.CURRENT_DATE }}
+          # Restore from outdated cache for speed
+          restore-keys: |
+            ${{ matrix.platform }}-stable-cargo-core-${{ hashFiles('Cargo.toml') }}
+            ${{ matrix.platform }}-stable-cargo-core-
+
+      - name: build runtime
+        run: cargo build --target ${{ matrix.platform.target }} --release
