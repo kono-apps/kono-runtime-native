@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::env;
 use std::ffi::c_char;
+use std::ptr::slice_from_raw_parts;
 use wry::application::event::{Event, StartCause, WindowEvent};
 use wry::application::event_loop::{ControlFlow, EventLoop};
 
@@ -39,6 +40,13 @@ extern fn webViewSetDevTools(webview_builder: Box<WebViewBuilder>, dev_tools: bo
     webview_builder.with_devtools(dev_tools).into()
 }
 
+/// Sets whether the webview allows dev-tools or not, such
+/// as inspect element
+#[no_mangle]
+extern fn webViewSetHTML(webview_builder: Box<WebViewBuilder>, html: *const c_char) -> Box<WebViewBuilder> {
+    webview_builder.with_html(to_rust_string(html)).unwrap().into()
+}
+
 /// Adds a custom protocol for serving files
 #[no_mangle]
 #[cfg(windows)]
@@ -52,7 +60,10 @@ extern fn webViewAddCustomProtocol(
         let path = request.uri().path();
         let mut asset = Asset::new(path);
         let asset = handler(&mut asset);
-        let content: Cow<[u8]> = to_rust_bytes(asset.content()).into();
+        let content = slice_from_raw_parts(asset.content(), asset.content_len());
+        // Safety: The content is guaranteed to be set from the Java side,
+        // therefore is never null.
+        let content = unsafe { content.as_ref() }.unwrap().into();
         let mime_type = to_rust_string(asset.mime_type());
         Response::builder()
             .header(CONTENT_TYPE, mime_type)
@@ -74,7 +85,7 @@ extern fn webViewAddCustomProtocol(
         let path = request.uri().path();
         let mut asset = Asset::new(path);
         let asset = handler(&mut asset);
-        let content: Cow<[u8]> = to_rust_bytes(asset.content()).into();
+        let content: Cow<[u8]> = slice_from_raw_parts(asset.content(), asset.content_len()).into();
         let mime_type = to_rust_string(asset.mime_type());
         Response::builder()
             .header(CONTENT_TYPE, mime_type)
