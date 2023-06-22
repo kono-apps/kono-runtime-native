@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::env;
 use std::ffi::c_char;
 use std::ptr::slice_from_raw_parts;
@@ -11,7 +10,7 @@ use wry::http::Response;
 use wry::webview::{WebContext, WebView, WebViewBuilder};
 use crate::asset::Asset;
 
-use crate::to_rust_string;
+use crate::{to_java_string, to_rust_string};
 
 /// Creates a new WebViewBuilder.
 ///
@@ -42,8 +41,28 @@ extern fn webViewSetDevTools(webview_builder: Box<WebViewBuilder>, dev_tools: bo
 /// Sets whether the webview allows dev-tools or not, such
 /// as inspect element
 #[no_mangle]
+extern fn webViewAddInitScript(webview_builder: Box<WebViewBuilder>, script: *const c_char) -> Box<WebViewBuilder> {
+    webview_builder.with_initialization_script(&to_rust_string(script)).into()
+}
+
+/// Sets whether the webview allows dev-tools or not, such
+/// as inspect element
+#[no_mangle]
 extern fn webViewSetHTML(webview_builder: Box<WebViewBuilder>, html: *const c_char) -> Box<WebViewBuilder> {
     webview_builder.with_html(to_rust_string(html)).unwrap().into()
+}
+
+/// Sets whether the webview allows dev-tools or not, such
+/// as inspect element
+#[no_mangle]
+extern fn webViewAddIPCHandler(
+    webview_builder: Box<WebViewBuilder>,
+    handler: extern fn(*const c_char) -> ()
+) -> Box<WebViewBuilder> {
+    webview_builder.with_ipc_handler(move |_: &Window, req: String| {
+        let req = to_java_string(&req);
+        handler(req)
+    }).into()
 }
 
 /// Adds a custom protocol for serving files

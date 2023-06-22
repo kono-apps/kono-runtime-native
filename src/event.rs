@@ -1,11 +1,6 @@
-use wry::application::event_loop::EventLoop;
+use wry::application::event_loop::{EventLoop, EventLoopProxy};
 
 #[no_mangle]
 extern fn createEventLoop() -> Box<EventLoop<()>> {
     EventLoop::new().into()
 }
-
-#[no_mangle]
-extern fn dropEventLoop(_: Box<EventLoop<()>>) {}
-
-pub enum KonoEvent {}
