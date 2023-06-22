@@ -103,7 +103,10 @@ extern fn webViewAddCustomProtocol(
         let path = request.uri().path();
         let mut asset = Asset::new(path);
         let asset = handler(&mut asset);
-        let content: Cow<[u8]> = slice_from_raw_parts(asset.content(), asset.content_len()).into();
+        let content = slice_from_raw_parts(asset.content(), asset.content_len());
+        // Safety: The content is guaranteed to be set from the Java side,
+        // therefore is never null.
+        let content = unsafe { content.as_ref() }.unwrap().into();
         let mime_type = to_rust_string(asset.mime_type());
         Response::builder()
             .header(CONTENT_TYPE, mime_type)
