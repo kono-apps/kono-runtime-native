@@ -77,11 +77,23 @@ jobs:
 
       - name: build runtime
         run: cargo build --target ${{ matrix.platform.target }} --release
-      - name: upload artifacts
+      - name: upload windows artifacts
+        if: contains(matrix.platform.target, 'windows')
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.platform.target }}
-          path: |
-            "${{ github.workspace }}/target/${{ matrix.platform.target }}/release/*.dylib"
-            "${{ github.workspace }}/target/${{ matrix.platform.target }}/release/*.so"
-            "${{ github.workspace }}/target/${{ matrix.platform.target }}/release/*.dll"
+          path: "${{ github.workspace }}/target/${{ matrix.platform.target }}/release/**.dll"
+          
+      - name: upload linux artifacts
+        if: contains(matrix.platform.target, 'gnu')
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.platform.target }}
+          path: "${{ github.workspace }}/target/${{ matrix.platform.target }}/release/**.so"
+          
+      - name: upload macos artifacts
+        if: contains(matrix.platform.target, 'apple')
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.platform.target }}
+          path: "${{ github.workspace }}/target/${{ matrix.platform.target }}/release/**.dylib"
