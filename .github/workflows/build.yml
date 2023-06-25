@@ -81,7 +81,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.platform.target }}
-          path: |
-            /Users/runner/work/kono-runtime-native/kono-runtime-native/target/release/*.so
-            /Users/runner/work/kono-runtime-native/kono-runtime-native/target/release/*.dll
-            /Users/runner/work/kono-runtime-native/kono-runtime-native/target/release/*.dylib
+          path: "*/*"
