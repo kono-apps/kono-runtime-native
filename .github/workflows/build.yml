@@ -81,4 +81,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.platform.target }}
-          path: "*/*"
+          path: |
+            "/target/${{ matrix.platform }}/release/*.dylib"
+            "/target/${{ matrix.platform }}/release/*.so"
+            "/target/${{ matrix.platform }}/release/*.dll"
