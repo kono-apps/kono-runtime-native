@@ -82,6 +82,6 @@ jobs:
         with:
           name: ${{ matrix.platform.target }}
           path: |
-            "/target/${{ matrix.platform.target }}/release/*.dylib"
-            "/target/${{ matrix.platform.target }}/release/*.so"
-            "/target/${{ matrix.platform.target }}/release/*.dll"
+            "${{ github.workspace }}/target/${{ matrix.platform.target }}/release/*.dylib"
+            "${{ github.workspace }}/target/${{ matrix.platform.target }}/release/*.so"
+            "${{ github.workspace }}/target/${{ matrix.platform.target }}/release/*.dll"
