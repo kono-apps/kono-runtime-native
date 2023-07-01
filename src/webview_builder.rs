@@ -1,6 +1,5 @@
-use std::env;
+use std::{env};
 use std::ffi::c_char;
-use std::ptr::slice_from_raw_parts;
 use wry::application::event::{Event, StartCause, WindowEvent};
 use wry::application::event_loop::{ControlFlow, EventLoop};
 
@@ -57,7 +56,7 @@ extern fn webViewSetHTML(webview_builder: Box<WebViewBuilder>, html: *const c_ch
 #[no_mangle]
 extern fn webViewAddIPCHandler(
     webview_builder: Box<WebViewBuilder>,
-    handler: extern fn(*const c_char) -> ()
+    handler: extern fn(*const c_char) -> (),
 ) -> Box<WebViewBuilder> {
     webview_builder.with_ipc_handler(move |_: &Window, req: String| {
         let req = to_java_string(&req);
@@ -71,20 +70,15 @@ extern fn webViewAddIPCHandler(
 extern fn webViewAddCustomProtocol(
     webview_builder: Box<WebViewBuilder>,
     name: *const c_char,
-    handler: extern "stdcall" fn(&mut Asset) -> &Asset,
+    handler: extern "stdcall" fn(*const c_char) -> &'static Asset,
 ) -> Box<WebViewBuilder> {
     let name = to_rust_string(name);
-    webview_builder.with_custom_protocol(name, move |request| {
+    webview_builder.with_custom_protocol(name, move |request|  {
         let path = request.uri().path();
-        let mut asset = Asset::new(path);
-        let asset = handler(&mut asset);
-        let content = slice_from_raw_parts(asset.content(), asset.content_len());
-        // Safety: The content is guaranteed to be set from the Java side,
-        // therefore is never null.
-        let content = unsafe { content.as_ref() }.unwrap().into();
-        let mime_type = to_rust_string(asset.mime_type());
+        let asset = handler(to_java_string(path));
+        let content = asset.content().into();
         Response::builder()
-            .header(CONTENT_TYPE, mime_type)
+            .header(CONTENT_TYPE, asset.mime_type())
             .body(content)
             .map_err(Into::into)
     }).into()
@@ -96,20 +90,15 @@ extern fn webViewAddCustomProtocol(
 extern fn webViewAddCustomProtocol(
     webview_builder: Box<WebViewBuilder>,
     name: *const c_char,
-    handler: extern fn(&mut Asset) -> &Asset,
+    handler: extern "C" fn(*const c_char) -> &'static Asset,
 ) -> Box<WebViewBuilder> {
     let name = to_rust_string(name);
-    webview_builder.with_custom_protocol(name, move |request| {
+    webview_builder.with_custom_protocol(name, move |request|  {
         let path = request.uri().path();
-        let mut asset = Asset::new(path);
-        let asset = handler(&mut asset);
-        let content = slice_from_raw_parts(asset.content(), asset.content_len());
-        // Safety: The content is guaranteed to be set from the Java side,
-        // therefore is never null.
-        let content = unsafe { content.as_ref() }.unwrap().into();
-        let mime_type = to_rust_string(asset.mime_type());
+        let asset = handler(to_java_string(path));
+        let content = asset.content().into();
         Response::builder()
-            .header(CONTENT_TYPE, mime_type)
+            .header(CONTENT_TYPE, asset.mime_type())
             .body(content)
             .map_err(Into::into)
     }).into()

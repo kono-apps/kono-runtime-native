@@ -1,53 +1,45 @@
-use std::ffi::c_char;
-use std::ptr::null;
-use crate::to_java_string;
+use std::ffi::{c_char, c_int};
+use crate::{to_rust_string};
 
 #[repr(C)]
 pub struct Asset {
-    path: *const c_char,
+    mime_type: String,
+    content: Vec<u8>,
+}
+
+#[no_mangle]
+extern fn createAsset(
     mime_type: *const c_char,
-    content: *const u8,
-    content_len: usize,
-}
-
-#[no_mangle]
-extern fn getAssetPath(asset: &Asset) -> *const c_char {
-    asset.path
-}
-
-#[no_mangle]
-extern fn assetSetMimeType(mut asset: Box<Asset>, mime_type: *const c_char) -> Box<Asset> {
-    asset.mime_type = mime_type;
-    asset
-}
-
-#[no_mangle]
-extern fn assetSetContent(mut asset: Box<Asset>, content: *const u8, content_len: u32) -> Box<Asset> {
-    asset.content = content;
-    asset.content_len = content_len as usize;
-    asset
+    content: *const i8,
+    content_len: c_int,
+) -> Box<Asset> {
+    // Safety: The data is guaranteed to be set from Java's side.
+    //
+    let content = unsafe {
+        Vec::from(
+            std::slice::from_raw_parts(
+                content as *const u8,
+                content_len as usize,
+            )
+        )
+    };
+    return Asset {
+        mime_type: to_rust_string(mime_type),
+        content: content,
+    }.into();
 }
 
 impl Asset {
-    pub fn new(path: &str) -> Self {
-        Self {
-            path: to_java_string(path),
-            mime_type: to_java_string(""),
-            content: null(),
-            content_len: 0,
-        }
+    pub fn new(mime_type: String, content: Vec<u8>) -> Self {
+        Self { mime_type, content }
     }
 
-    pub fn mime_type(&self) -> *const c_char {
-        self.mime_type
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
     }
 
-    pub fn content(&self) -> *const u8 {
-        self.content
-    }
-
-    pub fn content_len(&self) -> usize {
-        self.content_len
+    pub fn content(&self) -> &Vec<u8> {
+        &self.content
     }
 }
 
