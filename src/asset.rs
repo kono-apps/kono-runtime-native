@@ -14,7 +14,6 @@ extern fn createAsset(
     content_len: c_int,
 ) -> Box<Asset> {
     // Safety: The data is guaranteed to be set from Java's side.
-    //
     let content = unsafe {
         Vec::from(
             std::slice::from_raw_parts(
@@ -27,6 +26,12 @@ extern fn createAsset(
         mime_type: to_rust_string(mime_type),
         content: content,
     }.into();
+}
+
+/// Drops the asset and frees the memory
+#[no_mangle]
+extern fn dropAsset(asset: Box<Asset>) {
+    drop(asset)
 }
 
 impl Asset {
