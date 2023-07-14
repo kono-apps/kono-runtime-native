@@ -7,4 +7,4 @@ edition = "2021"
 crate_type = ["dylib"]
 
 [dependencies]
-wry = "0.29.0"
+wry = "0.30.0"
