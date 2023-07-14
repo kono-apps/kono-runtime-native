@@ -1,7 +1,7 @@
 use std::ffi::c_char;
 use wry::application::dpi::PhysicalSize;
 use wry::application::event_loop::EventLoop;
-use wry::application::window::{Window, WindowBuilder};
+use wry::application::window::{Theme, Window, WindowBuilder};
 use wry::application::window::Fullscreen::Borderless;
 use crate::to_rust_string;
 
@@ -50,9 +50,20 @@ extern fn windowBuilderSetResizable(window: Box<WindowBuilder>, resizable: bool)
 }
 
 #[no_mangle]
+extern fn windowBuilderSetTheme(
+    window: Box<WindowBuilder>,
+    theme: u8,
+) -> Box<WindowBuilder> {
+    let theme = match theme {
+        0 => Theme::Dark,
+        1 => Theme::Light,
+        v => panic!("Invalid theme: {v}. Expected 0 (dark), 1 (light)")
+    };
+    window.with_theme(Some(theme)).into()
+}
+
+#[no_mangle]
 extern fn windowBuild(window: Box<WindowBuilder>, event_loop: &EventLoop<()>) -> Box<Window> {
-    window.build(&event_loop)
-        .unwrap()
-        .into()
+    window.build(&event_loop).unwrap().into()
 }
 

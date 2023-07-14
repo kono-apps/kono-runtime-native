@@ -1,7 +1,5 @@
-use std::{env};
 use std::ffi::c_char;
-use wry::application::event::{Event, StartCause, WindowEvent};
-use wry::application::event_loop::{ControlFlow, EventLoop};
+use std::path::PathBuf;
 
 use wry::application::window::Window;
 use wry::http::header::CONTENT_TYPE;
@@ -70,27 +68,7 @@ extern fn webViewAddIPCHandler(
 extern fn webViewAddCustomProtocol(
     webview_builder: Box<WebViewBuilder>,
     name: *const c_char,
-    handler: extern "stdcall" fn(*const c_char) -> &'static Asset,
-) -> Box<WebViewBuilder> {
-    let name = to_rust_string(name);
-    webview_builder.with_custom_protocol(name, move |request|  {
-        let path = request.uri().path();
-        let asset = handler(to_java_string(path));
-        let content = asset.content().into();
-        Response::builder()
-            .header(CONTENT_TYPE, asset.mime_type())
-            .body(content)
-            .map_err(Into::into)
-    }).into()
-}
-
-/// Adds a custom protocol for serving files
-#[no_mangle]
-#[cfg(not(windows))]
-extern fn webViewAddCustomProtocol(
-    webview_builder: Box<WebViewBuilder>,
-    name: *const c_char,
-    handler: extern "C" fn(*const c_char) -> &'static Asset,
+    handler: extern fn(*const c_char) -> &'static Asset,
 ) -> Box<WebViewBuilder> {
     let name = to_rust_string(name);
     webview_builder.with_custom_protocol(name, move |request|  {
@@ -106,26 +84,10 @@ extern fn webViewAddCustomProtocol(
 
 /// Finalizes the WebViewBuilder into a WebView
 #[no_mangle]
-extern fn webViewBuild(webview_builder: Box<WebViewBuilder>) -> Box<WebView> {
-    let current_dir = env::current_dir().expect("failed to get running directory");
-    return webview_builder.with_web_context(&mut WebContext::new(Some(current_dir)))
+extern fn webViewBuild(webview_builder: Box<WebViewBuilder>, running_dir: *const c_char) -> Box<WebView> {
+    let running_dir = PathBuf::from(to_rust_string(running_dir));
+    return webview_builder.with_web_context(&mut WebContext::new(Some(running_dir)))
         .build()
         .expect("failed to create webview")
         .into();
-}
-
-/// Runs the WebView event loop
-#[no_mangle]
-extern fn eventLoopRun(event_loop: Box<EventLoop<()>>, init: extern fn() -> ()) {
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
-        match event {
-            Event::NewEvents(StartCause::Init) => init(),
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => *control_flow = ControlFlow::Exit,
-            _ => {}
-        }
-    });
 }
