@@ -8,6 +8,7 @@ pub mod webview_builder;
 pub mod asset;
 pub mod event;
 pub mod window_builder;
+ pub mod webview;
 
 /// Converts a Rust string to a Java string
 pub fn to_java_string(string: &str) -> *const c_char {
